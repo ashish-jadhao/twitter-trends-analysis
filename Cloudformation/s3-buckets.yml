@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'template for S3 Buckets'
+
+Parameters:
+    PipelieArtifactsBucket:
+        Description: 'Bucket to store pipeline artifacts'
+        Type: String
+    TwitterPaylaodsBucket:
+        Description: 'Bucket to store twitter payloads'
+        Type: String
+    CacheBucket:
+        Description: 'Bucket to cache artifacts'
+        Type: String
+        
+    
+Resources:
+    ArtifactsBucket:
+        Type: AWS::S3::Bucket
+        Properties:
+            BucketName: !Sub "${PipelieArtifactsBucket}-${AWS::AccountId}"
+            LifecycleConfiguration:
+                Rules:
+                -   Status: Enabled
+                    Prefix: ''
+                    ExpirationInDays: 5
+    PaylaodsBucket:
+        Type: AWS::S3::Bucket
+        Properties:
+            BucketName: !Sub "${TwitterPaylaodsBucket}-${AWS::AccountId}"
+            LifecycleConfiguration:
+                Rules:
+                -   Status: Enabled
+                    Prefix: ''
+                    ExpirationInDays: 5
+    BuildCacheBucket:
+        Type: AWS::S3::Bucket
+        Properties:
+            BucketName: !Sub "${CacheBucket}-${AWS::AccountId}"
+            LifecycleConfiguration:
+                Rules:
+                -   Status: Enabled
+                    Prefix: ''
+                    ExpirationInDays: 5

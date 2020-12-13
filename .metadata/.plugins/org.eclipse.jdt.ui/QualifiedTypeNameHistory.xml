@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<qualifiedTypeNameHistroy>
+<fullyQualifiedTypeName name="javax.naming.Context"/>
+<fullyQualifiedTypeName name="com.amazonaws.services.lambda.runtime.RequestHandler"/>
+<fullyQualifiedTypeName name="com.amazonaws.services.lambda.runtime.Context"/>
+<fullyQualifiedTypeName name="com.amazonaws.services.lambda.runtime.LambdaLogger"/>
+<fullyQualifiedTypeName name="twitter4j.TwitterFactory"/>
+<fullyQualifiedTypeName name="twitter4j.Twitter"/>
+<fullyQualifiedTypeName name="twitter4j.Trends"/>
+<fullyQualifiedTypeName name="com.serverless.dev.twitter_trends.logs.LogService"/>
+<fullyQualifiedTypeName name="com.fasterxml.jackson.databind.ObjectMapper"/>
+<fullyQualifiedTypeName name="com.fasterxml.jackson.core.JsonProcessingException"/>
+<fullyQualifiedTypeName name="twitter4j.conf.ConfigurationBuilder"/>
+<fullyQualifiedTypeName name="software.amazon.awssdk.core.internal.http.AmazonSyncHttpClient"/>
+<fullyQualifiedTypeName name="software.amazon.awssdk.services.s3.S3Client"/>
+<fullyQualifiedTypeName name="software.amazon.awssdk.services.s3.model.PutObjectResponse"/>
+<fullyQualifiedTypeName name="twitter4j.TwitterException"/>
+<fullyQualifiedTypeName name="com.amazonaws.services.secretsmanager.AWSSecretsManager"/>
+<fullyQualifiedTypeName name="com.amazonaws.services.secretsmanager.model.GetSecretValueRequest"/>
+<fullyQualifiedTypeName name="com.amazonaws.services.secretsmanager.model.GetSecretValueResult"/>
+<fullyQualifiedTypeName name="com.amazonaws.regions.Regions"/>
+<fullyQualifiedTypeName name="com.amazonaws.services.secretsmanager.AWSSecretsManagerClientBuilder"/>
+<fullyQualifiedTypeName name="com.amazonaws.services.s3.AmazonS3"/>
+<fullyQualifiedTypeName name="com.amazonaws.services.s3.AmazonS3ClientBuilder"/>
+</qualifiedTypeNameHistroy>

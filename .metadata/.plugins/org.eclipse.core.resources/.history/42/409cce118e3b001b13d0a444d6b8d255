@@ -1,0 +1,13 @@
+package com.serverless.dev.twitter_trends.logs;
+
+import twitter4j.Trend;
+
+public class LogService {
+
+	private String getTweetDetails(Trend trend){
+		
+		Log log = new Log();
+		
+		return null;
+	}
+}

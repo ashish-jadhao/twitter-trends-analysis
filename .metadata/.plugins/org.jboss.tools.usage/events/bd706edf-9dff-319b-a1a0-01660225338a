@@ -1,0 +1,11 @@
+#Sun Dec 13 02:36:21 IST 2020
+vl=How many times the 'Finish' button pressed during the day
+l=Wizard class name
+ct=jbt
+d=1607807181982
+c=0
+cmp=usage
+a=finishWizard
+cl=com.amazonaws.eclipse.lambda.project.wizard.NewLambdaJavaFunctionProjectWizard
+v=2.2.4
+s=1
