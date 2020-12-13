@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'template for hello world lambda'
+
+Resources:
+    LambdaPolicy:
+        Type: 'AWS::IAM::ManagedPolicy'
+        Properties:
+            Description: Policy for CodeBuild Project
+            ManagedPolicyName: lambda_Policy
+            PolicyDocument:
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "smreadaccess",
+                            "Effect": "Allow",
+                            "Action": "secretsmanager:*",
+                            "Resource": "*"
+                        },
+                        {
+                            "Sid": "s3putaccess",
+                            "Effect": "Allow",
+                            "Action": "s3:*",
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "logs:CreateLogGroup",
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Resource": [
+                                "*"
+                            ]
+                        }
+                    ]
+                }
+    LambdaRole:
+        Type: 'AWS::IAM::Role'
+        DependsOn: 
+            - LambdaPolicy
+        Properties:
+            Description: 'CodeBuild Role'
+            RoleName: lambda_Role
+            ManagedPolicyArns: 
+                - !Ref LambdaPolicy
+            AssumeRolePolicyDocument:
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                }
+    TwitterLambda:
+        Type: AWS::Serverless::Function
+        DependsOn: 
+            - LambdaRole
+        Properties:
+            FunctionName: 'trends-on-twitter'
+            CodeUri: target/twitter-trends-0.0.1-SNAPSHOT.jar
+            Handler: com.serverless.dev.twitter_trends.App::handleRequest
+            Runtime: java8
+            Timeout: 30
+            MemorySize: 512
+            Role: !GetAtt LambdaRole.Arn

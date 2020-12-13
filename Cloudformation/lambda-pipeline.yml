@@ -1,0 +1,465 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'template lambda pipeline'
+
+Parameters:
+    RepoName:
+        Description: 'Repository name'
+        Type: String
+    ArtifactsBucket:
+        Description: 'Pipeline Artifacts bucket name'
+        Type: String
+    CacheBucket:
+        Description: 'Cache Bucket name'
+        Type: String
+    
+Resources:
+    BuildPolicy:
+        Type: 'AWS::IAM::ManagedPolicy'
+        Properties:
+            Description: Policy for CodeBuild Project
+            ManagedPolicyName: !Sub "${RepoName}_Build_Policy"
+            PolicyDocument:
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "CreateLogGroup",
+                            "Effect": "Allow",
+                            "Action": [
+                                "logs:CreateLogStream",
+                                "logs:CreateLogGroup"
+                            ],
+                            "Resource": !Sub "arn:aws:logs:*:${AWS::AccountId}:log-group:${RepoName}*"
+                        },
+                        {
+                            "Sid": "PutLogEvents",
+                            "Effect": "Allow",
+                            "Action": "logs:PutLogEvents",
+                            "Resource": !Sub "arn:aws:logs:*:${AWS::AccountId}:log-group:*:log-stream:${RepoName}*"
+                        },
+                        {
+                            "Sid": "S3Access",
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:PutObject",
+                                "s3:GetObject",
+                                "s3:GetObjectVersion"
+                            ],
+                            "Resource": [
+                                !Sub "arn:aws:s3:::${ArtifactsBucket}*",
+                                !Sub "arn:aws:s3:::${CacheBucket}*"
+                                ]
+                        },
+                        {
+                            "Sid": "GetBucket",
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:GetBucketAcl",
+                                "s3:GetBucketLocation"
+                            ],
+                            "Resource": "arn:aws:s3:::*"
+                        },
+                        {
+                            "Sid": "CreateReports",
+                            "Effect": "Allow",
+                            "Action": [
+                                "codebuild:CreateReportGroup",
+                                "codebuild:CreateReport",
+                                "codebuild:UpdateReport",
+                                "codebuild:BatchPutCodeCoverages",
+                                "codebuild:BatchPutTestCases"
+                            ],
+                            "Resource": !Sub "arn:aws:codebuild:*:${AWS::AccountId}:report-group/${RepoName}*"
+                        },
+                        {
+                            "Sid": "codecommitAccess",
+                            "Effect": "Allow",
+                            "Action": "codecommit:*",
+                            "Resource": !Sub "arn:aws:codecommit:*:${AWS::AccountId}:*"
+                        }
+                    ]
+                }
+    BuildRole:
+        Type: 'AWS::IAM::Role'
+        DependsOn: 
+            - BuildPolicy
+        Properties:
+            Description: 'CodeBuild Role'
+            RoleName: !Sub "${RepoName}_Build_Role"
+            ManagedPolicyArns: 
+                - !Ref BuildPolicy
+            AssumeRolePolicyDocument:
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "codebuild.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                }
+
+    PipelinePolicy:
+        Type: 'AWS::IAM::ManagedPolicy'
+        Properties:
+            Description: Policy for CodePipeline
+            ManagedPolicyName: !Sub "${RepoName}_CodePipeline_Policy"
+            PolicyDocument:
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "passRoleforCF",
+                            "Effect": "Allow",
+                            "Action": "iam:PassRole",
+                            "Resource": "*",
+                            "Condition": {
+                                "StringEqualsIfExists":{
+                                    "iam:PassedToService": [
+                                        "cloudformation.amazonaws.com"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "Sid": "codecommitaccess",
+                            "Effect": "Allow",
+                            "Action": "codecommit:*",
+                            "Resource": !Sub "arn:aws:codecommit:*:${AWS::AccountId}:*"
+                        },
+                        {
+                            "Sid": "CloudformationAccess",
+                            "Effect": "Allow",
+                            "Action": [
+                                "cloudformation:CreateUploadBucket",
+                                "cloudformation:RegisterType",
+                                "cloudformation:DescribeStackDriftDetectionStatus",
+                                "cloudformation:ListExports",
+                                "cloudformation:ListStacks",
+                                "cloudformation:SetTypeDefaultVersion",
+                                "cloudformation:DescribeType",
+                                "cloudformation:ListImports",
+                                "cloudformation:ListTypes",
+                                "cloudformation:DescribeTypeRegistration",
+                                "cloudformation:DeregisterType",
+                                "cloudformation:ListTypeRegistrations",
+                                "cloudformation:EstimateTemplateCost",
+                                "cloudformation:DescribeAccountLimits",
+                                "cloudformation:CreateStackSet",
+                                "cloudformation:ValidateTemplate",
+                                "cloudformation:ListTypeVersions"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Sid": "CloudformationFullAccess",
+                            "Effect": "Allow",
+                            "Action": "cloudformation:*",
+                            "Resource": [
+                                "*"
+                                #!Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stackset/*:*",
+                                #!Sub "arn:aws:cloudformation:*:${AWS::AccountId}:stack/*/*"
+                            ]
+                        },
+                        {
+                            "Sid": "s3list",
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:List*",
+                                "s3:DescribeJob"
+                            ],
+                            "Resource": [
+                                "arn:aws:s3:::*",
+                                !Sub "arn:aws:s3:*:${AWS::AccountId}:job/*"
+                            ]
+                        },
+                        {
+                            "Sid": "s3put",
+                            "Effect": "Allow",
+                            "Action": "s3:PutObject",
+                            "Resource": "arn:aws:s3:::*/*"
+                        },
+                        {
+                            "Sid": "s3Get",
+                            "Effect": "Allow",
+                            "Action": "s3:Get*",
+                            "Resource": "*"
+                        },
+                        {
+                            "Sid": "codebuilds",
+                            "Effect": "Allow",
+                            "Action": [
+                                "codebuild:BatchGetBuildBatches",
+                                "codebuild:StartBuildBatch",
+                                "codebuild:StartBuild",
+                                "codebuild:BatchGetBuilds"
+                            ],
+                            "Resource": !Sub "arn:aws:codebuild:*:${AWS::AccountId}:project/*"
+                        },
+                        {
+                            "Sid": "opsworks",
+                            "Effect": "Allow",
+                            "Action": [
+                                "opsworks:UpdateApp",
+                                "opsworks:CreateDeployment",
+                                "opsworks:Describe*",
+                                "opsworks:UpdateStack"
+                            ],
+                            "Resource": !Sub "arn:aws:opsworks:*:${AWS::AccountId}:stack/*/"
+                        }
+                    ]            
+                }
+    CodePipelineRole:
+        Type: 'AWS::IAM::Role'
+        DependsOn: 
+            - PipelinePolicy
+        Properties:
+            Description: 'CodeCodePipeline Role'
+            RoleName: !Sub "${RepoName}_CodePipeline_Role"
+            ManagedPolicyArns:
+                - !Ref PipelinePolicy
+            AssumeRolePolicyDocument:
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "codepipeline.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                }
+                
+    CodeRepository:
+        Type: AWS::CodeCommit::Repository
+        Properties:
+            RepositoryName: !Sub "${RepoName}"
+            RepositoryDescription: 'Lambda code repository'
+    
+    BuildProject:
+        Type: AWS::CodeBuild::Project
+        DependsOn: 
+            - CodeRepository
+        Properties:
+            Name: !Sub "${RepoName}-build"
+            Description: 'Build Project for Lambda pipeline'
+            ServiceRole: !Ref BuildRole
+            Source:
+                Type: CODEPIPELINE
+            Artifacts:
+                Type: CODEPIPELINE
+            Environment:
+                Type: LINUX_CONTAINER
+                ComputeType: BUILD_GENERAL1_SMALL
+                Image: aws/codebuild/standard:4.0
+            TimeoutInMinutes: 5
+            Cache:
+                Location: !Ref CacheBucket
+                Type: S3
+            LogsConfig:
+                CloudWatchLogs:
+                    GroupName: !Sub "${RepoName}-buildLogs"
+                    Status: ENABLED
+                    StreamName: !Sub "${RepoName}-logStream"
+
+
+    CloudFormationRole:
+        Type: 'AWS::IAM::Role'
+        DependsOn: 
+            - CodePipelineRole
+        Properties:
+            Description: 'Cloudformation Role'
+            RoleName: !Sub "${RepoName}_CF_Role"
+            ManagedPolicyArns:
+                - arn:aws:iam::aws:policy/AdministratorAccess
+            AssumeRolePolicyDocument:
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "cloudformation.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                }
+    
+    LambdaPipeline:
+        Type: AWS::CodePipeline::Pipeline
+        DependsOn: 
+            - CodePipelineRole
+            - CloudFormationRole
+        Properties:
+            Name: !Sub "${RepoName}-master"
+            RoleArn: !GetAtt CodePipelineRole.Arn
+            ArtifactStore:
+                Location: !Ref ArtifactsBucket
+                Type: S3
+            Stages:
+                - Name: Source
+                  Actions:
+                    - Name: Source
+                      Namespace: SourceVariables
+                      ActionTypeId:
+                        Category: Source
+                        Owner: AWS
+                        Provider: CodeCommit
+                        Version: 1
+                      Configuration:
+                        RepositoryName: !Sub "${RepoName}"
+                        BranchName: master
+                        PollForSourceChanges: 'false'
+                      OutputArtifacts:
+                        - Name: SourceOutputArtifacts
+                      RunOrder: 1
+                - Name: CodeBuild
+                  Actions:
+                    - Name: CodeBuild
+                      ActionTypeId:
+                        Category: Build
+                        Owner: AWS
+                        Provider: CodeBuild
+                        Version: 1
+                      InputArtifacts:
+                        - Name: SourceOutputArtifacts
+                      OutputArtifacts:
+                        - Name: BuildOutputArtifacts
+                      Configuration:
+                        ProjectName: !Ref BuildProject
+                      RunOrder: 1                  
+                - Name: Release
+                  Actions:
+                    - Name: CreateChangeSet
+                      ActionTypeId:
+                        Category: Deploy
+                        Owner: AWS
+                        Provider: CloudFormation
+                        Version: 1
+                      InputArtifacts:
+                        - Name: BuildOutputArtifacts
+                      Configuration:
+                        ActionMode: CHANGE_SET_REPLACE
+                        ChangeSetName: 'cs#{SourceVariables.CommitId}'
+                        RoleArn: !GetAtt CloudFormationRole.Arn
+                        Capabilities: CAPABILITY_NAMED_IAM
+                        StackName: !Sub "${RepoName}-#{SourceVariables.BranchName}-Lambda"
+                        TemplatePath: BuildOutputArtifacts::outputtemplate.yml
+                      RunOrder: 1
+                    - Name: ApprovalForRelease
+                      ActionTypeId:
+                        Category: Approval
+                        Owner: AWS
+                        Provider: Manual
+                        Version: 1
+                      Configuration:
+                        CustomData: 'Please approve the pipeline for #{SourceVariables.CommitMessage}'
+                      RunOrder: 2
+                    - Name: ExecuteChangeSet
+                      ActionTypeId:
+                        Category: Deploy
+                        Owner: AWS
+                        Provider: CloudFormation
+                        Version: 1
+                      InputArtifacts:
+                        - Name: BuildOutputArtifacts
+                      Configuration:
+                        ActionMode: CHANGE_SET_EXECUTE 
+                        ChangeSetName: 'cs#{SourceVariables.CommitId}'
+                        RoleArn: !GetAtt CloudFormationRole.Arn
+                        StackName: !Sub "${RepoName}-#{SourceVariables.BranchName}-Lambda"
+                      RunOrder: 3
+
+    CWEventPolicy: 
+        Type: 'AWS::IAM::ManagedPolicy'
+        DependsOn: 
+            - LambdaPipeline
+        Properties:
+            Description: Policy to be used by CloudwatchEvent to trigger pipeline
+            ManagedPolicyName: !Sub "${RepoName}_Event_Policy"
+            PolicyDocument:
+                {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Sid": "CWEventsPolicy",
+                                "Effect": "Allow",
+                                "Action": "codepipeline:StartPipelineExecution",
+                                "Resource": !Sub "arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${RepoName}-master"
+                            }
+                        ]
+                }   
+    CWEventRole:
+        Type: 'AWS::IAM::Role'
+        DependsOn: 
+            - CWEventPolicy
+        Properties: 
+            Description: 'Role to start a pipeline'
+            RoleName: !Sub "${RepoName}_Event_Role"
+            ManagedPolicyArns: 
+                - !Ref CWEventPolicy
+            AssumeRolePolicyDocument:
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "events.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                }
+
+    CWEventRule:
+        Type: 'AWS::Events::Rule'
+        DependsOn: 
+            - CWEventRole
+        Properties:
+            Name: !Sub "${RepoName}_Event_Rule"
+            State: ENABLED
+            EventPattern:
+                source:
+                    - aws.codecommit
+                detail-type:
+                    - 'CodeCommit Repository State Change'
+                resources:
+                    - !Sub "arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${RepoName}"
+                detail:
+                    event:
+                        - referenceCreated
+                        - referenceUpdated
+                    referenceType:
+                        - branch
+                    referenceName:
+                        - master
+            Targets:
+                - Arn: !Sub "arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${RepoName}-master"
+                  RoleArn: !GetAtt CWEventRole.Arn
+                  Id: CWRule
+                
+                       

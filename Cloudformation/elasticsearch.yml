@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'template for elasticsearch domain'
+
+Parameters:
+    DomainName:
+        Description: 'Elasticsearch domain name'
+        Type: String
+    MasterUser:
+        Description: 'Username for master user'
+        Type: String
+    MasterPassword:
+        Description: 'Password for master user'
+        Type: String
+    
+Resources:
+    DevESDomain:
+        Type: AWS::Elasticsearch::Domain
+        Properties:
+            AdvancedSecurityOptions:
+                Enabled: true
+                InternalUserDatabaseEnabled: true
+                MasterUserOptions:
+                    MasterUserName: !Ref MasterUser
+                    MasterUserPassword: !Ref MasterPassword
+            DomainEndpointOptions:
+                EnforceHTTPS: true
+                TLSSecurityPolicy: "Policy-Min-TLS-1-2-2019-07"
+            DomainName: !Ref DomainName
+            EBSOptions:
+                EBSEnabled: true
+                VolumeSize: 10
+                VolumeType: "gp2"
+            ElasticsearchClusterConfig:
+                DedicatedMasterEnabled: false
+                InstanceCount: 1
+                InstanceType: "t3.small.elasticsearch"
+                ZoneAwarenessEnabled: false
+            ElasticsearchVersion: 7.9
+            EncryptionAtRestOptions:
+                Enabled: true
+            NodeToNodeEncryptionOptions:
+                Enabled: true
+            SnapshotOptions:
+                AutomatedSnapshotStartHour: 0
