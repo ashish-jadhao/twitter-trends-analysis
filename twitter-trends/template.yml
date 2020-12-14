@@ -6,7 +6,7 @@ Resources:
     LambdaPolicy:
         Type: 'AWS::IAM::ManagedPolicy'
         Properties:
-            Description: Policy for CodeBuild Project
+            Description: lambda Policy
             ManagedPolicyName: lambda_Policy
             PolicyDocument:
                 {
@@ -46,7 +46,7 @@ Resources:
         DependsOn: 
             - LambdaPolicy
         Properties:
-            Description: 'CodeBuild Role'
+            Description: 'Lambda Role'
             RoleName: lambda_Role
             ManagedPolicyArns: 
                 - !Ref LambdaPolicy
@@ -79,3 +79,11 @@ Resources:
             Timeout: 30
             MemorySize: 512
             Role: !GetAtt LambdaRole.Arn
+            Events:
+                TwitterScheduler:
+                    Type: Schedule
+                    Properties:
+                        Description: trigger the lambda once every day
+                        Enabled: True
+                        Name: TwitterScheduler
+                        Schedule: 'rate(1 day)'
